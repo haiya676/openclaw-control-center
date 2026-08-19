@@ -45,7 +45,13 @@ Produces `ds_control.exe` — drop it anywhere and run.
 
 ## Known Issues
 
+- **Not fully optimized** — this tool was built for personal use; you may encounter minor issues (UI edge cases, DPI/scaling quirks, etc.).
 - Rounded corners are not fully optimized — slight edge artifacts may appear at some DPI/scaling settings.
+- The floating ball model icon is only supported for a few models (deepseek / gpt / openai / gemini / kimi / moonshot) — other models fall back to the ¥ symbol.
+
+## Disclaimer
+
+This software is provided **as-is, without warranty of any kind**. It is a personal-use tool, not production software. Use at your own risk. The author is not responsible for any data loss, misconfiguration, or issues arising from its use.
 
 ## License
 
