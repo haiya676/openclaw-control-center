@@ -2,6 +2,10 @@
 
 A lightweight Windows desktop widget for **OpenClaw gateway status + DeepSeek usage monitoring**. Single portable EXE, no installation required.
 
+## Download
+
+Grab the latest portable zip from **[Releases](https://github.com/haiya676/openclaw-control-center/releases)** — unzip anywhere, run `ds_control.exe`. On first run it auto-detects your API key or prompts you to paste one, then saves it as `ds_key.conf` next to the EXE. That's it.
+
 ## Features
 
 - **¥ Floating Ball** on desktop — real-time display of **Balance / Today's Tokens / Today's Cost**
