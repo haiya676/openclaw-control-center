@@ -16,12 +16,17 @@ using System.Windows.Forms;
 using Microsoft.Win32;
 
 class OpenClawApp {
+    // ===== 多语言（自动识别系统语言: 中文→中文界面, 其他→英文界面） =====
+    public static bool IsZh = System.Globalization.CultureInfo.CurrentUICulture.Name.StartsWith("zh");
+    public static string T(string zh, string en) { return IsZh ? zh : en; }
+    public static string NO_KEY = "NoKey"; // 内部标记，显示时翻译
+
     // ===== 全局状态 =====
     public static string GatewayUrl = "http://127.0.0.1:18789";
     public static int GatewayPort = 18789;
-    public static string CurrentModel = "检测中...";
+    public static string CurrentModel = T("检测中...", "Detecting...");
     public static string DynamicSiteUrl = "https://github.com/openclaw/openclaw";
-    public static string DynamicSiteName = "官方文档 ↗";
+    public static string DynamicSiteName = T("官方文档 ↗", "Docs ↗");
     public static bool IsGatewayRunning = false;
     public static string ModelKey = "deepseek"; // 悬浮球图标: deepseek/gpt/gemini/kimi
     static string _lastModelKey = "";
@@ -82,8 +87,8 @@ class OpenClawApp {
                 var mModel = Regex.Match(json, "\"primary\"\\s*:\\s*\"([^\"]+)\"");
                 if (!mModel.Success) mModel = Regex.Match(json, "\"model\"\\s*:\\s*\"([^\"]+)\"");
                 CurrentModel = mModel.Success ? mModel.Groups[1].Value : "deepseek-chat";
-            } else { GatewayUrl = "未找到配置"; CurrentModel = "未知"; }
-        } catch { GatewayUrl = "读取错误"; CurrentModel = "未知"; }
+            } else { GatewayUrl = T("未找到配置", "Config not found"); CurrentModel = T("未知", "Unknown"); }
+        } catch { GatewayUrl = T("读取错误", "Read error"); CurrentModel = T("未知", "Unknown"); }
 
         // TCP 端口探针
         IsGatewayRunning = false;
@@ -96,12 +101,12 @@ class OpenClawApp {
 
         // 模型 → 官网
         string lm = CurrentModel.ToLower();
-        if (lm.Contains("deepseek")) { DynamicSiteUrl = "https://platform.deepseek.com"; DynamicSiteName = "DeepSeek 官网 ↗"; }
-        else if (lm.Contains("gpt") || lm.Contains("openai")) { DynamicSiteUrl = "https://platform.openai.com"; DynamicSiteName = "OpenAI 官网 ↗"; }
-        else if (lm.Contains("claude") || lm.Contains("anthropic")) { DynamicSiteUrl = "https://console.anthropic.com"; DynamicSiteName = "Claude 官网 ↗"; }
-        else if (lm.Contains("qwen") || lm.Contains("tongyi")) { DynamicSiteUrl = "https://dashscope.console.aliyun.com"; DynamicSiteName = "通义千问 ↗"; }
-        else if (lm.Contains("gemini") || lm.Contains("google")) { DynamicSiteUrl = "https://aistudio.google.com"; DynamicSiteName = "Gemini 官网 ↗"; }
-        else { DynamicSiteUrl = "https://github.com/openclaw/openclaw"; DynamicSiteName = "OpenClaw 官网 ↗"; }
+        if (lm.Contains("deepseek")) { DynamicSiteUrl = "https://platform.deepseek.com"; DynamicSiteName = T("DeepSeek 官网 ↗", "DeepSeek ↗"); }
+        else if (lm.Contains("gpt") || lm.Contains("openai")) { DynamicSiteUrl = "https://platform.openai.com"; DynamicSiteName = T("OpenAI 官网 ↗", "OpenAI ↗"); }
+        else if (lm.Contains("claude") || lm.Contains("anthropic")) { DynamicSiteUrl = "https://console.anthropic.com"; DynamicSiteName = T("Claude 官网 ↗", "Claude ↗"); }
+        else if (lm.Contains("qwen") || lm.Contains("tongyi")) { DynamicSiteUrl = "https://dashscope.console.aliyun.com"; DynamicSiteName = T("通义千问 ↗", "Qwen ↗"); }
+        else if (lm.Contains("gemini") || lm.Contains("google")) { DynamicSiteUrl = "https://aistudio.google.com"; DynamicSiteName = T("Gemini 官网 ↗", "Gemini ↗"); }
+        else { DynamicSiteUrl = "https://github.com/openclaw/openclaw"; DynamicSiteName = T("OpenClaw 官网 ↗", "OpenClaw ↗"); }
 
         // 模型 → 悬浮球图标
         string key = "deepseek";
@@ -127,7 +132,7 @@ class OpenClawApp {
                 if (enable) k.SetValue("OpenClawControl", "\"" + Application.ExecutablePath + "\"");
                 else k.DeleteValue("OpenClawControl", false);
             }
-        } catch (Exception ex) { MessageBox.Show("设置开机自启失败: " + ex.Message); }
+        } catch (Exception ex) { MessageBox.Show(T("设置开机自启失败: ", "Failed to set auto-start: ") + ex.Message); }
     }
 
     // ===== 3. 网关开关 =====
@@ -145,13 +150,13 @@ class OpenClawApp {
                 psi.CreateNoWindow = true; psi.UseShellExecute = false;
                 Process.Start(psi);
                 IsGatewayRunning = true;
-            } catch (Exception ex) { MessageBox.Show("网关启动失败: " + ex.Message); }
+            } catch (Exception ex) { MessageBox.Show(T("网关启动失败: ", "Failed to start gateway: ") + ex.Message); }
         }
     }
 
     // ===== 4. DeepSeek 用量 =====
     static string FetchBalance() {
-        if (string.IsNullOrEmpty(KEY)) return "无Key";
+        if (string.IsNullOrEmpty(KEY)) return NO_KEY;
         try {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             var req = (HttpWebRequest)WebRequest.Create(BALANCE_URL);
@@ -300,8 +305,8 @@ public static void RefreshData() {
                 Log("usage tin=" + tin + " tout=" + tout + " cost=" + cost);
                 long tok = tin + tout;
                 string ts;
-                if (tok >= 100000000) ts = (tok / 100000000.0).ToString("0.0000") + " 亿";
-                else if (tok >= 10000) ts = (tok / 10000.0).ToString("0.00") + " 万";
+                if (tok >= 100000000) ts = IsZh ? (tok / 100000000.0).ToString("0.0000") + " 亿" : (tok / 1000000.0).ToString("0.00") + "M";
+                else if (tok >= 10000) ts = IsZh ? (tok / 10000.0).ToString("0.00") + " 万" : (tok / 1000.0).ToString("0.00") + "K";
                 else ts = tok.ToString();
                 bal = b; tokStr = ts;
                 costStr = "¥ " + cost.ToString("0.0000");
@@ -375,7 +380,7 @@ public static void RefreshData() {
         Color green = Color.FromArgb(163, 230, 53);
 
         public MainForm() {
-            Text = "OpenClaw 控制中心";
+            Text = T("OpenClaw 控制中心", "OpenClaw Control Center");
             Size = new Size(390, 520);
             MinimumSize = new Size(380, 300);
             StartPosition = FormStartPosition.CenterScreen;
@@ -385,7 +390,7 @@ public static void RefreshData() {
             Controls.Add(containerPanel);
 
             Label lblTitle = new Label {
-                Text = "OpenClaw 控制面板",
+                Text = T("OpenClaw 控制面板", "OpenClaw Control Panel"),
                 Font = new Font("Microsoft YaHei UI", 14, FontStyle.Bold),
                 ForeColor = fg, Location = new Point(20, 15), AutoSize = true
             };
@@ -394,21 +399,21 @@ public static void RefreshData() {
             // 卡片1: 网关
             Panel pnlCard = new Panel { Location = new Point(20, 50), Size = new Size(330, 110), BackColor = cardBg };
             containerPanel.Controls.Add(pnlCard);
-            lblStatus = MakeInfoLabel(pnlCard, "网关状态: 检测中...", 12, 12, true);
-            lblUrl = MakeInfoLabel(pnlCard, "网关地址: 检测中...", 12, 40, false);
-            lblModel = MakeInfoLabel(pnlCard, "当前模型: 检测中...", 12, 68, false);
+            lblStatus = MakeInfoLabel(pnlCard, T("网关状态: 检测中...", "Gateway: Detecting..."), 12, 12, true);
+            lblUrl = MakeInfoLabel(pnlCard, T("网关地址: 检测中...", "Gateway URL: Detecting..."), 12, 40, false);
+            lblModel = MakeInfoLabel(pnlCard, T("当前模型: 检测中...", "Model: Detecting..."), 12, 68, false);
 
             // 卡片2: 用量
             Panel pnlUsage = new Panel { Location = new Point(20, 175), Size = new Size(330, 130), BackColor = cardBg };
             containerPanel.Controls.Add(pnlUsage);
-            MakeInfoLabel(pnlUsage, "账户余额", 12, 12, false);
+            MakeInfoLabel(pnlUsage, T("账户余额", "Balance"), 12, 12, false);
             lblBal = MakeInfoLabel(pnlUsage, "…", 130, 10, true);
             lblBal.ForeColor = green;
             lblBal.Font = new Font("Consolas", 12, FontStyle.Bold);
-            MakeInfoLabel(pnlUsage, "今日 Token", 12, 42, false);
+            MakeInfoLabel(pnlUsage, T("今日 Token", "Today Tokens"), 12, 42, false);
             lblTok = MakeInfoLabel(pnlUsage, "…", 130, 40, true);
             lblTok.Font = new Font("Consolas", 10, FontStyle.Bold);
-            MakeInfoLabel(pnlUsage, "大约花费", 12, 72, false);
+            MakeInfoLabel(pnlUsage, T("大约花费", "Est. Cost"), 12, 72, false);
             lblCost = MakeInfoLabel(pnlUsage, "…", 130, 70, true);
             lblCost.Font = new Font("Consolas", 10, FontStyle.Bold);
             lblTime = MakeInfoLabel(pnlUsage, "", 130, 100, false);
@@ -416,7 +421,7 @@ public static void RefreshData() {
 
             // 开机自启
             chkAutoStart = new CheckBox {
-                Text = "开机自动启动控制中心", ForeColor = fg,
+                Text = T("开机自动启动控制中心", "Start with Windows"), ForeColor = fg,
                 Font = new Font("Microsoft YaHei UI", 9.5f),
                 Location = new Point(20, 320), AutoSize = true, Checked = IsAutoStartEnabled()
             };
@@ -424,18 +429,18 @@ public static void RefreshData() {
             containerPanel.Controls.Add(chkAutoStart);
 
             // 特效按钮
-            btnGateway = CreateBtn("开关网关", new Rectangle(20, 355, 158, 40), accent,
+            btnGateway = CreateBtn(T("开关网关", "Toggle Gateway"), new Rectangle(20, 355, 158, 40), accent,
                 Color.FromArgb(79, 150, 255), Color.FromArgb(40, 100, 210), () => { ToggleGateway(); UpdateUI(); });
             containerPanel.Controls.Add(btnGateway);
 
-            btnBall = CreateBtn("切换悬浮球", new Rectangle(192, 355, 158, 40),
+            btnBall = CreateBtn(T("切换悬浮球", "Toggle Ball"), new Rectangle(192, 355, 158, 40),
                 Color.FromArgb(45, 48, 64), Color.FromArgb(65, 70, 90), Color.FromArgb(35, 38, 50), () => {
                     if (ballForm.Visible) ballForm.Hide();
                     else ballForm.Show();
                 });
             containerPanel.Controls.Add(btnBall);
 
-            btnRefresh = CreateBtn("⟳ 刷新用量", new Rectangle(20, 405, 158, 38),
+            btnRefresh = CreateBtn(T("⟳ 刷新用量", "⟳ Refresh Usage"), new Rectangle(20, 405, 158, 38),
                 Color.FromArgb(45, 48, 64), Color.FromArgb(65, 70, 90), Color.FromArgb(35, 38, 50), () => RefreshData());
             containerPanel.Controls.Add(btnRefresh);
 
@@ -470,19 +475,19 @@ public static void RefreshData() {
 
         public void UpdateUI() {
             DetectOpenClaw();
-            lblStatus.Text = "网关状态: " + (IsGatewayRunning ? "● 运行中" : "○ 已停止");
+            lblStatus.Text = T("网关状态: ", "Gateway: ") + (IsGatewayRunning ? T("● 运行中", "● Running") : T("○ 已停止", "○ Stopped"));
             lblStatus.ForeColor = IsGatewayRunning ? Color.FromArgb(163, 230, 53) : Color.FromArgb(239, 68, 68);
-            lblUrl.Text = "网关地址: " + GatewayUrl;
-            lblModel.Text = "当前模型: " + CurrentModel;
-            btnGateway.Text = IsGatewayRunning ? "关闭网关" : "启动网关";
+            lblUrl.Text = T("网关地址: ", "Gateway URL: ") + GatewayUrl;
+            lblModel.Text = T("当前模型: ", "Model: ") + CurrentModel;
+            btnGateway.Text = IsGatewayRunning ? T("关闭网关", "Stop Gateway") : T("启动网关", "Start Gateway");
             btnSite.Text = DynamicSiteName;
         }
         public void UpdateUsage() {
             try {
-                lblBal.Text = (bal == "ERR" || bal == "无Key") ? bal : "¥ " + bal;
+                lblBal.Text = (bal == "ERR" || bal == NO_KEY) ? (bal == NO_KEY ? T("无Key", "No Key") : bal) : "¥ " + bal;
                 lblTok.Text = tokStr;
                 lblCost.Text = costStr;
-                lblTime.Text = "更新于 " + timeStr;
+                lblTime.Text = T("更新于 ", "Updated ") + timeStr;
             } catch {}
         }
     }
@@ -623,7 +628,7 @@ public static void RefreshData() {
             using (GraphicsPath p = RoundRect(new Rectangle(0, 0, Width, Height), 16)) Region = new Region(p);
 
             Label head = new Label {
-                Text = "    DeepSeek 用量",
+                Text = T("    DeepSeek 用量", "    DeepSeek Usage"),
                 Font = new Font("Microsoft YaHei UI", 11, FontStyle.Bold),
                 ForeColor = fg, BackColor = headBg, Bounds = new Rectangle(0, 0, Width, 36)
             };
@@ -642,24 +647,24 @@ public static void RefreshData() {
             close.Click += (s, e) => OpenClawApp.ClosePanel();
             Controls.Add(close);
 
-            MakeLabel("账户余额", new Rectangle(16, 50, 90, 22), sub, 10);
+            MakeLabel(T("账户余额", "Balance"), new Rectangle(16, 50, 90, 22), sub, 10);
             lblBal = MakeVal(new Rectangle(120, 46, 144, 26), "…", 14, green, true);
-            MakeLabel("今日 Token", new Rectangle(16, 80, 90, 22), sub, 10);
+            MakeLabel(T("今日 Token", "Today Tokens"), new Rectangle(16, 80, 90, 22), sub, 10);
             lblTok = MakeVal(new Rectangle(120, 78, 144, 22), "…", 11, fg, false);
-            MakeLabel("大约花费", new Rectangle(16, 108, 90, 22), sub, 10);
+            MakeLabel(T("大约花费", "Est. Cost"), new Rectangle(16, 108, 90, 22), sub, 10);
             lblCost = MakeVal(new Rectangle(120, 106, 144, 22), "…", 11, fg, false);
             lblTime = MakeVal(new Rectangle(120, 132, 144, 16), "", 8, Color.FromArgb(107, 114, 128), false);
 
-            Controls.Add(new RoundedBtn("⟳ 刷新", new Rectangle(16, 156, 118, 34),
+            Controls.Add(new RoundedBtn(T("⟳ 刷新", "⟳ Refresh"), new Rectangle(16, 156, 118, 34),
                 Color.FromArgb(59, 130, 246), Color.FromArgb(79, 150, 255), Color.FromArgb(40, 100, 210), 8,
                 () => OpenClawApp.RefreshData()));
-            Controls.Add(new RoundedBtn("官网 ↗", new Rectangle(146, 156, 118, 34),
+            Controls.Add(new RoundedBtn(T("官网 ↗", "Site ↗"), new Rectangle(146, 156, 118, 34),
                 Color.FromArgb(45, 48, 64), Color.FromArgb(65, 70, 90), Color.FromArgb(35, 38, 50), 8,
                 () => { try { Process.Start(new ProcessStartInfo(OFFICIAL_URL) { UseShellExecute = true }); } catch {} }));
-            Controls.Add(new RoundedBtn("控制中心", new Rectangle(16, 198, 118, 30),
+            Controls.Add(new RoundedBtn(T("控制中心", "Control Center"), new Rectangle(16, 198, 118, 30),
                 Color.FromArgb(45, 48, 64), Color.FromArgb(65, 70, 90), Color.FromArgb(35, 38, 50), 8,
                 () => { OpenClawApp.ClosePanel(); OpenClawApp.mainForm.Show(); OpenClawApp.mainForm.Activate(); }));
-            Controls.Add(new RoundedBtn("退出", new Rectangle(146, 198, 118, 30),
+            Controls.Add(new RoundedBtn(T("退出", "Exit"), new Rectangle(146, 198, 118, 30),
                 Color.FromArgb(239, 68, 68), Color.FromArgb(248, 113, 113), Color.FromArgb(185, 28, 28), 8,
                 () => {
                     // 退出 = 关闭悬浮球（隐藏球+卡片），控制中心不受影响
@@ -689,10 +694,10 @@ public static void RefreshData() {
         }
         public void UpdateUsage() {
             try {
-                lblBal.Text = (bal == "ERR" || bal == "无Key") ? bal : "¥ " + bal;
+                lblBal.Text = (bal == "ERR" || bal == NO_KEY) ? (bal == NO_KEY ? T("无Key", "No Key") : bal) : "¥ " + bal;
                 lblTok.Text = tokStr;
                 lblCost.Text = costStr;
-                lblTime.Text = "更新于 " + timeStr;
+                lblTime.Text = T("更新于 ", "Updated ") + timeStr;
             } catch {}
         }
     }
@@ -730,7 +735,7 @@ public static void RefreshData() {
         Color green = Color.FromArgb(163, 230, 53);
 
         public KeyInputForm() {
-            Text = "OpenClaw 控制中心 - API Key";
+            Text = T("OpenClaw 控制中心 - API Key", "OpenClaw Control Center - API Key");
             Size = new Size(430, 240);
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = bg;
@@ -739,14 +744,14 @@ public static void RefreshData() {
             MinimizeBox = false;
 
             Label lblTitle = new Label {
-                Text = "未检测到 API Key",
+                Text = T("未检测到 API Key", "No API Key Detected"),
                 Font = new Font("Microsoft YaHei UI", 13, FontStyle.Bold),
                 ForeColor = fg, Location = new Point(24, 18), AutoSize = true
             };
             Controls.Add(lblTitle);
 
             Label lblHint = new Label {
-                Text = "首次使用请粘贴 DeepSeek API Key（sk- 开头）\n将自动保存到 exe 同目录的 ds_key.conf",
+                Text = T("首次使用请粘贴 DeepSeek API Key（sk- 开头）\n将自动保存到 exe 同目录的 ds_key.conf", "First run: paste your DeepSeek API Key (starts with sk-)\nIt will be saved to ds_key.conf next to the EXE"),
                 Font = new Font("Microsoft YaHei UI", 9.5f),
                 ForeColor = Color.FromArgb(156, 160, 176),
                 Location = new Point(24, 52), AutoSize = true
@@ -763,7 +768,7 @@ public static void RefreshData() {
             Controls.Add(txtKey);
             txtKey.Focus();
 
-            RoundedBtn btnOk = new RoundedBtn("保存", new Rectangle(196, 152, 96, 34), accent,
+            RoundedBtn btnOk = new RoundedBtn(T("保存", "Save"), new Rectangle(196, 152, 96, 34), accent,
                 Color.FromArgb(96, 165, 250), Color.FromArgb(37, 99, 235), 8, () => {
                     string k = txtKey.Text.Trim();
                     if (string.IsNullOrEmpty(k)) { txtKey.Focus(); return; }
@@ -773,7 +778,7 @@ public static void RefreshData() {
                 });
             Controls.Add(btnOk);
 
-            RoundedBtn btnCancel = new RoundedBtn("跳过", new Rectangle(304, 152, 96, 34),
+            RoundedBtn btnCancel = new RoundedBtn(T("跳过", "Skip"), new Rectangle(304, 152, 96, 34),
                 Color.FromArgb(55, 58, 72), Color.FromArgb(70, 74, 90), Color.FromArgb(40, 43, 55), 8, () => {
                     DialogResult = DialogResult.Cancel;
                     Close();

@@ -12,6 +12,7 @@ Grab the latest portable zip from **[Releases](https://github.com/haiya676/openc
 - **Control Panel** — gateway status (TCP port probe), gateway URL, current model detection, usage stats, auto-start toggle
 - **Fancy Buttons** — hover glow + press dim effect (custom `RoundedBtn` control)
 - **Rounded dark UI**, semi-transparent draggable floating ball
+- **🌐 Built-in i18n** — auto-detects system language: Chinese UI on zh systems, English UI otherwise
 
 ## How the API Key Works (zero-config)
 
@@ -41,6 +42,10 @@ Produces `ds_control.exe` — drop it anywhere and run.
 - **Double-click the floating ball** → usage card (balance highlighted in green, with official platform link)
 - **Control panel buttons** → refresh, open official site, toggle the floating ball, auto-start
 - Ball and panel support standard dark-theme interactions
+
+## Known Issues
+
+- Rounded corners are not fully optimized — slight edge artifacts may appear at some DPI/scaling settings.
 
 ## License
 
