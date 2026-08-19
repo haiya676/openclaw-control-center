@@ -227,6 +227,16 @@ class OpenClawApp {
             string conf = Path.Combine(dir, "ds_key.conf");
             if (File.Exists(conf)) { KEY = File.ReadAllText(conf, Encoding.UTF8).Trim(); SaveConf(); }
         } catch {}
+        // 全部来源都拿不到 key → 弹窗让用户手动输入（首次使用）
+        if (string.IsNullOrEmpty(KEY)) {
+            try {
+                using (var dlg = new KeyInputForm()) {
+                    if (dlg.ShowDialog() == DialogResult.OK && !string.IsNullOrEmpty(KEY)) {
+                        SaveConf();
+                    }
+                }
+            } catch {}
+        }
         SaveConf();
     }
 
@@ -321,17 +331,20 @@ public static void RefreshData() {
         public Color BaseColor, HoverColor, PressColor;
         public int Radius;
         bool hover = false, press = false;
+        Action _onClick;
         public RoundedBtn(string text, Rectangle bounds, Color baseC, Color hoverC, Color pressC, int radius, Action onClick) {
             Text = text; Bounds = bounds;
             BaseColor = baseC; HoverColor = hoverC; PressColor = pressC; Radius = radius;
+            _onClick = onClick;
             DoubleBuffered = true; Cursor = Cursors.Hand; ForeColor = Color.White;
             Font = new Font("Microsoft YaHei UI", 10, FontStyle.Bold);
             MouseEnter += (s, e) => { hover = true; Invalidate(); };
             MouseLeave += (s, e) => { hover = false; press = false; Invalidate(); };
             MouseDown += (s, e) => { press = true; Invalidate(); };
             MouseUp += (s, e) => { press = false; Invalidate(); };
-            Click += (s, e) => onClick();
+            Click += (s, e) => _onClick();
         }
+        public void PerformClick() { _onClick(); }
         protected override void OnPaint(PaintEventArgs e) {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
@@ -705,6 +718,75 @@ public static void RefreshData() {
     public static void ClosePanel() {
         cardVisible = false;
         cardForm.Hide();
+    }
+
+    // ===== Key 输入框（首次运行未检测到 API Key 时弹出） =====
+    public class KeyInputForm : Form {
+        TextBox txtKey;
+        Color bg = Color.FromArgb(20, 22, 30);
+        Color cardBg = Color.FromArgb(30, 33, 46);
+        Color fg = Color.FromArgb(232, 234, 242);
+        Color accent = Color.FromArgb(59, 130, 246);
+        Color green = Color.FromArgb(163, 230, 53);
+
+        public KeyInputForm() {
+            Text = "OpenClaw 控制中心 - API Key";
+            Size = new Size(430, 240);
+            StartPosition = FormStartPosition.CenterScreen;
+            BackColor = bg;
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+
+            Label lblTitle = new Label {
+                Text = "未检测到 API Key",
+                Font = new Font("Microsoft YaHei UI", 13, FontStyle.Bold),
+                ForeColor = fg, Location = new Point(24, 18), AutoSize = true
+            };
+            Controls.Add(lblTitle);
+
+            Label lblHint = new Label {
+                Text = "首次使用请粘贴 DeepSeek API Key（sk- 开头）\n将自动保存到 exe 同目录的 ds_key.conf",
+                Font = new Font("Microsoft YaHei UI", 9.5f),
+                ForeColor = Color.FromArgb(156, 160, 176),
+                Location = new Point(24, 52), AutoSize = true
+            };
+            Controls.Add(lblHint);
+
+            txtKey = new TextBox {
+                Location = new Point(24, 100),
+                Size = new Size(376, 28),
+                BackColor = cardBg, ForeColor = fg,
+                Font = new Font("Consolas", 11),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            Controls.Add(txtKey);
+            txtKey.Focus();
+
+            RoundedBtn btnOk = new RoundedBtn("保存", new Rectangle(196, 152, 96, 34), accent,
+                Color.FromArgb(96, 165, 250), Color.FromArgb(37, 99, 235), 8, () => {
+                    string k = txtKey.Text.Trim();
+                    if (string.IsNullOrEmpty(k)) { txtKey.Focus(); return; }
+                    OpenClawApp.KEY = k;
+                    DialogResult = DialogResult.OK;
+                    Close();
+                });
+            Controls.Add(btnOk);
+
+            RoundedBtn btnCancel = new RoundedBtn("跳过", new Rectangle(304, 152, 96, 34),
+                Color.FromArgb(55, 58, 72), Color.FromArgb(70, 74, 90), Color.FromArgb(40, 43, 55), 8, () => {
+                    DialogResult = DialogResult.Cancel;
+                    Close();
+                });
+            Controls.Add(btnCancel);
+
+            AcceptButton = null;
+            KeyPreview = true;
+            KeyDown += (s, e) => {
+                if (e.KeyCode == Keys.Enter) { btnOk.PerformClick(); }
+                else if (e.KeyCode == Keys.Escape) { btnCancel.PerformClick(); }
+            };
+        }
     }
 
     [STAThread]

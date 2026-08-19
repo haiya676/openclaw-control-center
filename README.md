@@ -1,42 +1,42 @@
-# OpenClaw 控制中心（悬浮球）🖥️
+# OpenClaw Control Center 🖥️
 
-Windows 桌面小工具：**OpenClaw 网关状态 + DeepSeek 用量监控**，单 exe 免安装。
+A lightweight Windows desktop widget for **OpenClaw gateway status + DeepSeek usage monitoring**. Single portable EXE, no installation required.
 
-- 桌面 ¥ 悬浮球：实时显示 **余额 / 今日 Token / 今日消费** 三项数据
-- 控制中心面板：网关运行状态（TCP 端口探测）、地址、当前模型识别、三项用量、开机自启开关
-- 特效按钮：hover 变亮 + 按下变暗（自定义 RoundedBtn 控件）
-- 圆角深色 UI，半透明悬浮球可拖动
+## Features
 
-## 截图
+- **¥ Floating Ball** on desktop — real-time display of **Balance / Today's Tokens / Today's Cost**
+- **Control Panel** — gateway status (TCP port probe), gateway URL, current model detection, usage stats, auto-start toggle
+- **Fancy Buttons** — hover glow + press dim effect (custom `RoundedBtn` control)
+- **Rounded dark UI**, semi-transparent draggable floating ball
 
-（待补充）
+## How the API Key Works (zero-config)
 
-## 编译
+The app finds your API key automatically, in this order:
 
-环境：Windows + .NET Framework（自带 csc，无需额外安装）
+1. `~/.openclaw/main/agent/models.json` or `~/.openclaw/agents/main/agent/models.json`
+2. `~/.openclaw/openclaw.json`
+3. Environment variable (`DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `MOONSHOT_API_KEY`)
+4. `ds_key.conf` next to the EXE
+
+On **first run with no key found anywhere**, a dark-themed dialog pops up asking you to paste your key. It is then saved to `ds_key.conf` next to the EXE — **automatic, portable, one-time setup**.
+
+> 🔒 `ds_key.conf` contains a real secret and is excluded via `.gitignore`. Never commit it.
+
+## Build
+
+Windows + .NET Framework (the built-in `csc` compiler, no extra tooling):
 
 ```bat
 csc /nologo /target:winexe /r:System.dll /r:System.Core.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:ds_control.exe ds_float.cs
 ```
 
-产出 `ds_control.exe`，复制到桌面即用。
+Produces `ds_control.exe` — drop it anywhere and run.
 
-## 配置
+## Usage
 
-API Key 自动获取，优先级从高到低：
-
-1. `~/.openclaw/models.json` 里的 provider key
-2. `~/.openclaw/openclaw.json` 里的 provider key
-3. 环境变量（`DEEPSEEK_API_KEY` 等）
-4. 同目录 `ds_key.conf`（纯文本存 key，兜底用）
-
-> 🔒 `ds_key.conf` 含真实密钥，已被 `.gitignore` 排除，**切勿提交到 GitHub**。
-
-## 使用
-
-- 双击悬浮球 → 弹出用量卡片（余额黄绿高亮，含官网链接）
-- 右键悬浮球 / 控制中心按钮 → 各项操作
-- 控制中心「切换悬浮球」开关 → 控制悬浮球显隐
+- **Double-click the floating ball** → usage card (balance highlighted in green, with official platform link)
+- **Control panel buttons** → refresh, open official site, toggle the floating ball, auto-start
+- Ball and panel support standard dark-theme interactions
 
 ## License
 
