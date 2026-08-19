@@ -10,6 +10,7 @@ Grab the latest portable zip from **[Releases](https://github.com/haiya676/openc
 
 - **¥ Floating Ball** on desktop — real-time display of **Balance / Today's Tokens / Today's Cost**
 - **Control Panel** — gateway status (TCP port probe), gateway URL, current model detection, usage stats, auto-start toggle
+- **Live Model Detection** — polls the gateway every 20s (`openclaw status --json`) and shows the model of the most recently active session, so per-session switches (e.g. `/model agnes/agnes-2.0-flash`) are reflected automatically, not just the config default
 - **Fancy Buttons** — hover glow + press dim effect (custom `RoundedBtn` control)
 - **Rounded dark UI**, semi-transparent draggable floating ball
 - **🌐 Built-in i18n** — auto-detects system language: Chinese UI on zh systems, English UI otherwise

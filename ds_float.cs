@@ -30,6 +30,8 @@ class OpenClawApp {
     public static bool IsGatewayRunning = false;
     public static string ModelKey = "deepseek"; // 悬浮球图标: deepseek/gpt/gemini/kimi
     static string _lastModelKey = "";
+    public static bool liveModelValid = false;   // true=已拿到网关实时模型, 不再被配置默认值覆盖
+    static DateTime lastLiveFetch = DateTime.MinValue;
 
     static string ConfigPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
@@ -84,9 +86,11 @@ class OpenClawApp {
                 string json = File.ReadAllText(ConfigPath, Encoding.UTF8);
                 var mPort = Regex.Match(json, "\"port\"\\s*:\\s*(\\d+)");
                 if (mPort.Success) { GatewayPort = int.Parse(mPort.Groups[1].Value); GatewayUrl = "http://127.0.0.1:" + GatewayPort; }
-                var mModel = Regex.Match(json, "\"primary\"\\s*:\\s*\"([^\"]+)\"");
-                if (!mModel.Success) mModel = Regex.Match(json, "\"model\"\\s*:\\s*\"([^\"]+)\"");
-                CurrentModel = mModel.Success ? mModel.Groups[1].Value : "deepseek-chat";
+                if (!liveModelValid) {
+                    var mModel = Regex.Match(json, "\"primary\"\\s*:\\s*\"([^\"]+)\"");
+                    if (!mModel.Success) mModel = Regex.Match(json, "\"model\"\\s*:\\s*\"([^\"]+)\"");
+                    CurrentModel = mModel.Success ? mModel.Groups[1].Value : "deepseek-chat";
+                }
             } else { GatewayUrl = T("未找到配置", "Config not found"); CurrentModel = T("未知", "Unknown"); }
         } catch { GatewayUrl = T("读取错误", "Read error"); CurrentModel = T("未知", "Unknown"); }
 
@@ -120,6 +124,65 @@ class OpenClawApp {
                 try { ballForm.Invoke((Action)(() => ballForm.DrawBall(ballForm.IsHover(), ballForm.IsPress()))); } catch {}
             }
         }
+    }
+
+    // ===== 1b. 实时模型（会话级切换也能识别） =====
+    // 面板每 3 秒读的是 openclaw.json 的默认模型(model.primary);
+    // 在聊天里用 /model 切换是"会话级覆盖", 不会写进配置文件。
+    // 所以这里定时跑 `openclaw status --json`, 取最近活跃会话的 selectedModel。
+    public static void TryFetchLiveModel() {
+        if ((DateTime.Now - lastLiveFetch).TotalSeconds < 20) return;
+        lastLiveFetch = DateTime.Now;
+        try {
+            Log("livefetch: start");
+            // openclaw 在 Windows 上是 .ps1/.cmd shim, CreateProcess 跑不了
+            // → 从 ~/.openclaw/gateway.cmd 解析真实的 node.exe + dist/index.js
+            string exe = "openclaw", args = "status --json";
+            try {
+                string gw = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".openclaw\\gateway.cmd");
+                if (File.Exists(gw)) {
+                    string txt = File.ReadAllText(gw);
+                    var mNode = Regex.Match(txt, "\"([^\"]*node(?:64)?\\.exe)\"");
+                    if (!mNode.Success) mNode = Regex.Match(txt, "'([^']*node(?:64)?\\.exe)'");
+                    var mIdx = Regex.Match(txt, "([A-Za-z]:[^\"' ]*dist[\\\\/]index\\.js)");
+                    if (mNode.Success && mIdx.Success) { exe = mNode.Groups[1].Value; args = "\"" + mIdx.Groups[1].Value + "\" status --json"; }
+                }
+            } catch {}
+            ProcessStartInfo psi = new ProcessStartInfo(exe, args) {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                StandardOutputEncoding = Encoding.UTF8
+            };
+            using (Process p = Process.Start(psi)) {
+                // 必须先异步读管道, 否则输出超过 4KB 缓冲会堵死子进程
+                var outTask = p.StandardOutput.ReadToEndAsync();
+                var errTask = p.StandardError.ReadToEndAsync();
+                if (!p.WaitForExit(6000)) { try { p.Kill(); } catch {} Log("livefetch: timeout"); return; }
+                string outp = outTask.Result;
+                // 第一个 selectedModel = sessions.recent[0] = 最近活跃会话实际用的模型
+                var m = Regex.Match(outp, "\"selectedModel\"\\s*:\\s*\"([^\"]+)\"");
+                if (m.Success && m.Groups[1].Value.Length > 0) {
+                    string full = m.Groups[1].Value;
+                    string alias = FindModelAlias(full);
+                    CurrentModel = alias ?? full;
+                    liveModelValid = true;
+                    Log("livefetch: model=" + CurrentModel);
+                } else { Log("livefetch: no selectedModel in output, len=" + outp.Length); }
+            }
+        } catch (Exception ex) { Log("livefetch: EX " + ex.Message); }
+    }
+
+    // 从 openclaw.json 的 agents.defaults.models.<id>.alias 找显示名
+    public static string FindModelAlias(string modelId) {
+        try {
+            if (!File.Exists(ConfigPath)) return null;
+            string json = File.ReadAllText(ConfigPath, Encoding.UTF8);
+            var m = Regex.Match(json, Regex.Escape(modelId) + "\"\\s*:\\s*\\{[^}]*?\"alias\"\\s*:\\s*\"([^\"]+)\"");
+            if (m.Success) return m.Groups[1].Value;
+        } catch {}
+        return null;
     }
 
     // ===== 2. 开机自启 =====
@@ -455,6 +518,8 @@ public static void RefreshData() {
             t.Interval = 3000; t.Tick += (s, e) => UpdateUI(); t.Start();
             System.Windows.Forms.Timer t2 = new System.Windows.Forms.Timer();
             t2.Interval = 60000; t2.Tick += (s, e) => RefreshData(); t2.Start();
+            System.Windows.Forms.Timer t3 = new System.Windows.Forms.Timer();
+            t3.Interval = 20000; t3.Tick += (s, e) => { Thread th = new Thread(TryFetchLiveModel); th.IsBackground = true; th.Start(); }; t3.Start();
 
             UpdateUI();
             RefreshData();
@@ -815,6 +880,10 @@ public static void RefreshData() {
 
         // 默认只显示控制中心（悬浮球可通过按钮开启）
         RefreshData();
+        // 启动后先查一次实时模型（后台线程, 不卡界面）
+        Thread initLive = new Thread(() => { Thread.Sleep(800); TryFetchLiveModel(); });
+        initLive.IsBackground = true;
+        initLive.Start();
         Application.Run(mainForm);
     }
 }
