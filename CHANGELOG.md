@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.3 (2026-08-19) — exe logo 修复
+
+### 修复
+- **EXE 文件图标（logo）恢复**：重新编译时通过 `/win32icon:app.ico` 把 `app.ico` 挂回可执行文件。此前图标文件仅存在于本地目录、未纳入仓库，重编译后 exe 变回 csc 默认图标
+- **悬浮球模型 logo 恢复**：`deepseek / gpt / gemini / kimi` 四张模型 PNG 改用 `/resource:` 内嵌进 exe（此前编译命令未带 `/resource`，悬浮球永远画 ¥ 兑底）
+- 编译命令已更新并写入 README（`/win32icon:app.ico` + `/resource:assets/*.png`），确保重编不再丢 logo
+
 ## v1.0.2 (2026-08-19) — 实时模型识别补丁
 
 ### 新增

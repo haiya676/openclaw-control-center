@@ -33,10 +33,23 @@ On **first run with no key found anywhere**, a dark-themed dialog pops up asking
 Windows + .NET Framework (the built-in `csc` compiler, no extra tooling):
 
 ```bat
-csc /nologo /target:winexe /r:System.dll /r:System.Core.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:ds_control.exe ds_float.cs
+REM Pick a model PNG + assign the exe icon, then build.
+REM (The floating-ball model icons are embedded as resources;
+REM  app.ico is the EXE file icon shown in Explorer.)
+csc /nologo /target:winexe /codepage:65001 ^
+  /win32icon:app.ico ^
+  /resource:assets\deepseek.png /resource:assets\gpt.png ^
+  /resource:assets\gemini.png /resource:assets\kimi.png ^
+  /r:System.dll /r:System.Core.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll ^
+  /out:ds_control.exe ds_float.cs
 ```
 
-Produces `ds_control.exe` — drop it anywhere and run.
+Produces `ds_control.exe` — drop it anywhere and run. `app.ico` is the EXE icon (shown in Explorer); the four `assets/*.png` are the model logos painted on the floating ball.
+
+## Assets
+
+- `app.ico` — EXE file icon (`/win32icon`)
+- `assets/deepseek.png`, `assets/gpt.png`, `assets/gemini.png`, `assets/kimi.png` — model logos embedded via `/resource` and drawn on the floating ball (`ModelKey + ".png"`)
 
 ## Usage
 
