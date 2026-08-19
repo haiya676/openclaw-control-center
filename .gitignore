@@ -1,0 +1,9 @@
+# 密钥文件 - 禁止提交！
+ds_key.conf
+
+# 编译产物
+*.exe
+*.dll
+
+# Git
+.git/
